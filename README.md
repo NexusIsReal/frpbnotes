@@ -84,3 +84,4 @@ deployed site (or use a tunnel such as ngrok). Small uploads work fully locally.
 - `PUT /api/notes/[id]` — approve a note (admin)
 - `DELETE /api/notes/[id]` — reject/delete a note (admin)
 - `GET /api/file/[id]` — stream a note's file (append `?download=1` to download)
+"# frpbnotes" 
