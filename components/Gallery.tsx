@@ -219,20 +219,26 @@ function PreviewModal({ note, onClose }: { note: Note; onClose: () => void }) {
   const pageCount = note.pages.length;
 
   useEffect(() => {
+    // Lock the page behind the modal so touch scrolling stays inside the note.
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
     const onKey = (e: KeyboardEvent) => {
       if (e.key === "Escape") onClose();
       if (e.key === "ArrowRight") setPage((p) => Math.min(p + 1, pageCount - 1));
       if (e.key === "ArrowLeft") setPage((p) => Math.max(p - 1, 0));
     };
     window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      window.removeEventListener("keydown", onKey);
+    };
   }, [onClose, pageCount]);
 
   const currentPage = note.pages[Math.min(page, pageCount - 1)];
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4"
+      className="fixed inset-0 z-50 flex items-center justify-center overscroll-contain bg-black/70 p-4"
       onClick={onClose}
     >
       <div
@@ -248,6 +254,14 @@ function PreviewModal({ note, onClose }: { note: Note; onClose: () => void }) {
           </div>
           <div className="flex shrink-0 items-center gap-2">
             <a
+              href={`/api/file/${note.id}?page=${page}`}
+              target="_blank"
+              rel="noreferrer"
+              className="rounded-lg border border-border px-3 py-1.5 text-xs text-foreground/70 transition hover:text-foreground"
+            >
+              Open
+            </a>
+            <a
               href={`/api/file/${note.id}?page=${page}&download=1`}
               className="rounded-lg bg-accent px-3 py-1.5 text-xs font-semibold text-white transition hover:opacity-90"
             >
@@ -262,7 +276,7 @@ function PreviewModal({ note, onClose }: { note: Note; onClose: () => void }) {
           </div>
         </div>
 
-        <div className="relative min-h-0 flex-1 overflow-auto bg-background">
+        <div className="min-h-0 flex-1 touch-auto overflow-auto overscroll-contain bg-background">
           {currentPage?.mimeType.startsWith("image/") ? (
             // eslint-disable-next-line @next/next/no-img-element
             <img
