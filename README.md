@@ -31,10 +31,10 @@ Browser ── file > 4 MB ── direct to Vercel Blob (transient staging)
 2. Add your bot as an **administrator** of that channel (needs only
    "Post messages" permission).
 3. Get the channel's chat ID:
-   - If the channel has a public link, you can use `@yourchannelname`.
-   - Otherwise, post any message in the channel, then open
-     `https://api.telegram.org/bot<YOUR_TOKEN>/getUpdates` in a browser and
-     find `chat.id` (a `-100…` number).
+   - If the channel has a public link, you can use `@yourchannelname` directly.
+   - For a private channel, run `node scripts/get-channel-id.mjs <YOUR_BOT_TOKEN>`,
+     then post anything in the channel while the script waits — it prints the
+     `-100…` chat ID to use.
 
 ### 2. Metadata index (Upstash Redis)
 
