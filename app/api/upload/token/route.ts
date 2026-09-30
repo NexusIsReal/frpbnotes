@@ -1,16 +1,23 @@
 import { handleUpload, type HandleUploadBody } from "@vercel/blob/client";
 import { del } from "@vercel/blob";
-import { storeFileAsNote } from "@/lib/upload";
+import { collectPageFromBlob, sendPage } from "@/lib/upload";
 import { ALLOWED_MIME_TYPES, MAX_FILE_BYTES } from "@/lib/types";
 
 export const runtime = "nodejs";
 export const maxDuration = 300;
 
+interface PagePayload {
+  noteId: string;
+  title: string;
+  subjectId: string | null;
+  pageIndex: number;
+  pageCount: number;
+}
+
 /**
- * Handles the client-upload flow for files larger than Vercel's 4.5 MB
- * request-body limit: the browser uploads directly to Vercel Blob, then this
- * route moves the file into the Telegram storage channel and deletes the blob.
- * Blob is only a transient staging buffer — Telegram is the sole permanent store.
+ * Large-file client-upload flow: the browser uploads each page directly to
+ * Vercel Blob (transient staging), then this route moves it into the Telegram
+ * storage channel and deletes the blob. Pages accumulate into one note.
  */
 export async function POST(request: Request): Promise<Response> {
   if (!process.env.BLOB_READ_WRITE_TOKEN) {
@@ -36,24 +43,19 @@ export async function POST(request: Request): Promise<Response> {
         tokenPayload: clientPayload ?? "",
       }),
       onUploadCompleted: async ({ blob, tokenPayload }) => {
-        let title = blob.pathname.split("/").pop() ?? "Untitled note";
+        let meta: PagePayload;
         try {
-          const parsed = JSON.parse(tokenPayload ?? "{}") as { title?: string };
-          if (parsed.title?.trim()) title = parsed.title.trim();
+          meta = JSON.parse(tokenPayload ?? "{}") as PagePayload;
         } catch {
-          // keep filename as title
+          meta = { noteId: crypto.randomUUID(), title: blob.pathname, subjectId: null, pageIndex: 0, pageCount: 1 };
         }
         try {
           const res = await fetch(blob.url);
           if (!res.ok) throw new Error(`Failed to download staged blob: ${res.status}`);
           const buffer = await res.arrayBuffer();
-          await storeFileAsNote(
-            buffer,
-            title,
-            blob.contentType,
-            buffer.byteLength,
-            title
-          );
+          const fileName = blob.pathname.split("/").pop() || "page";
+          const page = await sendPage(buffer, fileName, blob.contentType, meta.title);
+          await collectPageFromBlob(meta, page);
         } finally {
           await del(blob.url).catch(() => {});
         }

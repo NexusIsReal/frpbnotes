@@ -20,7 +20,7 @@ export async function PUT(
   return Response.json({ note });
 }
 
-/** Reject/delete a note: removes it from the index and the Telegram channel (admin only). */
+/** Reject/delete a note: removes every page from the index and the Telegram channel (admin only). */
 export async function DELETE(
   _request: Request,
   { params }: RouteContext<"/api/notes/[id]">
@@ -31,6 +31,8 @@ export async function DELETE(
   const { id } = await params;
   const note = await deleteNote(id);
   if (!note) return Response.json({ error: "Note not found" }, { status: 404 });
-  await deleteTelegramMessage(note.messageId);
+  for (const page of note.pages) {
+    if (page) await deleteTelegramMessage(page.messageId);
+  }
   return Response.json({ deleted: true });
 }
